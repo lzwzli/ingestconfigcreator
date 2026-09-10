@@ -1,0 +1,347 @@
+## **IngestConfigCreatorPrefect**
+- ingestconfigcreator_prefect
+
+## **IngestConfigCreatorSnaplogic**
+- ingestconfigcreator_snaplogic
+
+## **Library.Class.SourceTable**
+  - init:
+    - **_workbook_**
+    - **_worksheet_**
+    - **_tracelog_**
+  - tableinfo
+  - table_name
+  - filereceiptcheck
+  - threshold
+  - standardization_ind
+  - standardization_sheet
+  - rawaudience_ind
+  - rawaudience_sheet
+  - sourcedate_ind
+  - filesuffixmap
+  - filematchtext
+  - create_keyhash
+  - columns
+  - primary_keys
+  - primary_keys_string
+  - old_columns
+  - new_columns
+  - check_schema_drift
+  - phone_columns
+  - salesforce_object_name
+## **Library.Class.Logger**
+  - init
+  - log: 
+    - **_msg_**
+  - append: 
+    - **_msg_**
+  - out
+## **Library.Class.Document**
+  - init
+  - newling: 
+    - **_str_**
+  - append: 
+    - **_str_**
+  - newlinelist: 
+    - **_str_list_**
+    - **_padding_**
+  - trimend: 
+    - **_num_char_to_trim_**
+  - out
+  - out_str: 
+    - **_trim_dbl_esc_**
+## **Library.Class.StdSheet**
+  - init: 
+    - **_workbook_**
+    - **_worksheet_**
+    - **_bus_rule_obj_**
+    - **_platform_**
+  - import_table
+  - stage_table
+  - join_tables
+  - fields
+  - checknan: 
+    - **_input_**
+  - checknan_nullif: 
+    - **_input_**
+  - columns_string
+  - std_query
+  - busrule_query
+  - create_std_busrule
+## **Library.Class.RawAudSheet**
+  - init:
+    - **_workbook_**
+    - **_worksheet_**
+    - **_table_name_**
+    - **_bus_rule_obj_**
+    - **_platform_**
+  - src_value
+    - **_rawaud_col_name_**
+  - stg_ra_query
+  - create_stg_rawaud_busrule
+  - tmp_ra_query
+  - create_tmp_rawaud_busrule
+  - col_or_str:
+    - **_input_str_**
+    - **_table_name_**
+  - ctrl_ra_src_query
+  - ctrl_ra_merge_query
+  - ctrl_ra_file:
+    - **_db_folder_**
+    - **_repo_root_folder_**
+    - **_client_**
+    - **_source_name_**
+  - create_merge_to_rawaudience_sp:
+    - **_table_name_**
+    - **_db_folder_**
+    - **_tracelog_**
+    - **_repo_root_folder_**
+    - **_client_**
+    - **_source_name_**
+  - delete_orphan_from_rawaudience_sp:
+    - **_table_name_**
+    - **_db_folder_**
+    - **_tracelog_**
+    - **_repo_root_folder_**
+    - **_client_**
+    - **_source_name_**
+  - rawaudience_sources:
+    - **_table_name_**
+    - **_db_folder_**
+    - **_tracelog_**
+    - **_repo_root_folder_**
+    - **_client_**
+## **Library.Class.BusRules**
+  - init
+  - add_rule:
+    - **_rule_json_**
+  - out
+    - **_table_name_**
+    - **_db_folder_**
+    - **_tracelog_**
+    - **_repo_root_folder_**
+    - **_client_**
+    - **_source_name_**
+    - **_is_Prefect_**
+## **Library.Class.Sources**
+  - init
+  - create_sources
+    - **_source_name_**
+    - **_table_name_**
+    - _**pk_str**_
+    - **_rawaud_ind_**
+    - **_src_date_ind_**
+    - _**std_ind**_
+    - **_std_query_filename_**
+    - **_copyinto_filename_**
+    - _**threshold**_
+    - _**db_folder**_
+    - **_tracelog_**
+    - **_repo_root_folder_**
+    - **_client_**
+  - append
+    - **_key_name_**
+    - **_value_**
+  - replace
+    - **_key_name_**
+    - **_value_**
+## **Library.Class.MenuPrompt**
+  - init
+  - addChoice
+    - **_name_**
+    - **_description_**
+  - prompt
+
+## **Library.Class.Config**
+- init
+  - **_client_**
+  - **_database_**
+  - **_source_name_**
+  - **_source_type_**
+  - **_dd_file_**
+  - **_repo_root_folder_**
+  - **_tracelog_**
+- load_source_functions
+- read_dd_file
+- create_copy_into_FF
+  - **_table_name_**
+  - **_col_list_**
+  - **_file_match_text_**
+  - **_file_date_regex_**
+  - **_field_delimiter_**
+  - **_field_enclosed_by_**
+  - **_custom_fileformat_options_**
+- create_copy_into_JSON
+  - **_table_name_**
+  - **_file_match_text_**
+  - **_file_date_regex_**
+  - **_custom_fileformat_options_**
+- read_worksheet_info
+  - **_worksheet_**
+- create_base_config
+  - **_dd_file_**
+  - **_bus_rules_**
+  - **_sources_obj_**
+  - **_wsheetinfo_**
+  - **_copyinto_filename_**
+- create_config_end
+- create_config_FF
+  - **_file_date_regex_**
+  - **_field_delimiter_**
+  - **_field_enclosed_by_**
+  - **_copyffoptions_**
+- create_config_KIP
+  - **_file_date_regex_**
+  - **_copyffoptions_**
+
+## **Library.Functions**
+- filewrite
+  - **_folder_**
+  - **_filename_**
+  - **_content_**
+- validate
+  - **_input_val_**
+  - **_values_**
+- fileDialog
+  - **_filetype_**
+  - **_title_**
+- folderDialog
+  - **_title_**
+- create_folders
+  - **_folder_**
+  - **_tracelog_**
+- print_section
+  - **_msg_**
+  - **_tracelog_**
+- print_section_detail
+  - **_msg_**
+  - **_tracelog_**
+- normalizePath
+  - **_folder_path_**
+- qlookup
+  - **_df_**
+  - **_lookup_col_**
+  - **_return_col_**
+- ilookup
+  - **_worksheet_**
+  - **_lookup_col_**
+- clookup
+  - **_worksheet_**
+  - **_lookup_col_**
+  - **_lookup_val_**
+  - **_return_col_**
+- getDDLcolumns
+  - **_col_list_**
+  - **_ddl_type_**
+- create_phone_formatter_busrule
+  - **_table_name_**
+  - **_pk_list_**
+  - **_phone_cols_**
+  - **_platform_**
+- create_unique_worktable_busrule
+  - **_table_name_**
+  - **_keyhash_**
+  - **_tracelog_**
+  - **_platform_**
+- create_importraw_DDL
+  - **_table_name_**
+  - **_version_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+  - **_is_Prefect_**
+- create_import_DDL
+  - **_table_name_**
+  - **_col_list_**
+  - **_version_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+- create_stage_DDL
+  - **_table_name_**
+  - **_col_list_**
+  - **_pk_str_**
+  - **_phone_col_list_**
+  - **_std_ind_**
+  - **_rawaud_ind_**
+  - **_version_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+- create_flatten
+  - **_source_name_**
+  - **_table_name_**
+  - **_table_name_raw_**
+  - **_col_list_**
+  - **_version_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_legacy_**
+  - **_is_Prefect_**
+- create_deployment_scripts
+  - **_client_name_**
+  - **_database_**
+  - **_env_**
+  - **_source_name_**
+  - **_repo_name_**
+  - **_resources_**
+- get_client_project
+  - **_client_name_**
+- create_truncate_query
+  - **_table_name_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+- create_merge_sp
+  - **_table_name_**
+  - **_pk_list_**
+  - **_col_list_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_std_ind_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+- create_unique_sp
+  - **_table_name_**
+  - **_pk_list_**
+  - **_col_list_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_std_ind_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+- create_schema_drift_script
+  - **_table_name_**
+  - **_stage_DDL_**
+  - **_old_cols_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+  - **_source_name_**
+  - **_std_ind_**
+- create_feature_file
+  - **_source_name_**
+  - **_table_name_list_**
+  - **_db_folder_**
+  - **_tracelog_**
+  - **_repo_root_folder_**
+  - **_client_**
+
+## **Library.Flatten_basic**
+- flattenjson
+  - **_table_name_**
+  - **_table_name_raw_**
+  - **_col_list_**

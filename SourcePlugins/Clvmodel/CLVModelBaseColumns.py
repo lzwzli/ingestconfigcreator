@@ -1,0 +1,9 @@
+clvmodelbasecols = [
+    "MODELRUNDATE",
+    "AUDIENCEID",
+    "CUSTOMERSEGMENT",
+    "FINALCLV",
+    "CLVPERCENTILE",
+    "RETENTIONDECILES",
+    "LATESTMODELRUNFLAG"
+]

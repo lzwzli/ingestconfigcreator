@@ -1,3 +1,3 @@
 @echo off
-python DataTesterLite.py
+python DataTesterLiteUI.py
 Pause

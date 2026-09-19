@@ -1,3 +1,3 @@
 @echo off
-python IngestConfigCreator.py
+python IngestConfigCreatorUI.py
 Pause

@@ -3,11 +3,13 @@ from Library.Class.Logger import *
 from Library.Class.Config import *
 from version import *
 
-def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
+def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict=None, ui_params:dict=None):
     # ----------------------------------------------------------------
     # create runlog object
     # ----------------------------------------------------------------
     runlog = Logger()
+    runProfileDict = runProfileDict or {}
+    ui_mode = ui_params is not None
 
     # ----------------------------------------------------------------
     # report version
@@ -30,21 +32,29 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # parse arguments
     # -----------------------------------------------------------------------
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sourcetype', help="source type. FF=Flat File sources / KIP=KIP acquired sources")
-    parser.add_argument('--ddfile', help="input path to data dictionary file")
-    parser.add_argument('--database', help="database name, i.e. tepperqa")
-    parser.add_argument('--client', help="client abbreviation name, i.e. tepper")
-    parser.add_argument('--sourcename', help="source name, i.e. dynamics")
-    parser.add_argument('--reporootfolder', help="folder path to user Documents folder")
-    args = parser.parse_args()
+    if ui_mode:
+        source_type = ui_params.get("sourcetype", "")
+        client = ui_params.get("client", "").strip()
+        database = ui_params.get("database", "").strip()
+        source_name = ui_params.get("sourcename", "").strip()
+        dd_file = ui_params.get("ddfile", "")
+        repo_root_folder = ui_params.get("reporootfolder", "") or ""
+    else:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--sourcetype', help="source type. FF=Flat File sources / KIP=KIP acquired sources")
+        parser.add_argument('--ddfile', help="input path to data dictionary file")
+        parser.add_argument('--database', help="database name, i.e. tepperqa")
+        parser.add_argument('--client', help="client abbreviation name, i.e. tepper")
+        parser.add_argument('--sourcename', help="source name, i.e. dynamics")
+        parser.add_argument('--reporootfolder', help="folder path to user Documents folder")
+        args = parser.parse_args()
 
-    source_type = args.sourcetype
-    client = args.client
-    database = args.database
-    source_name = args.sourcename
-    dd_file = args.ddfile
-    repo_root_folder = args.reporootfolder
+        source_type = args.sourcetype
+        client = args.client
+        database = args.database
+        source_name = args.sourcename
+        dd_file = args.ddfile
+        repo_root_folder = args.reporootfolder
 
     # -----------------------------------------------------------------------
     # ask for arguments
@@ -52,7 +62,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # load run profile variables
     # -----------------------------------------------------------------------
-    if len(runProfileDict) > 0:
+    if len(runProfileDict) > 0 and not ui_mode:
         # load variables
         client = loadProfileVars(runProfileDict, varname="client")
         database = loadProfileVars(runProfileDict, varname="database")
@@ -66,7 +76,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # dd_file
     # -----------------------------------------------------------------------
-    while dd_file is None or dd_file == "":
+    while not ui_mode and (dd_file is None or dd_file == ""):
         print("Select Excel data dictionary file from dialog. Dialog may be hidden behind other windows.")
         dd_file = fileDialog(filetype=("Excel", ".xlsx"), title="Select Excel data dictionary file")
         # exit if no file provided when user hits cancel
@@ -86,7 +96,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # client
     # -----------------------------------------------------------------------
-    while client is None or client == "":
+    while not ui_mode and (client is None or client == ""):
         client = input("Enter client abbreviation: ")
 
     client = client.upper()
@@ -95,7 +105,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # database
     # -----------------------------------------------------------------------
-    while database is None or database == "":
+    while not ui_mode and (database is None or database == ""):
         database = input("Enter database name: ")
 
     database = database.upper()
@@ -104,7 +114,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # source_name
     # -----------------------------------------------------------------------
-    while source_name is None or source_name == "":
+    while not ui_mode and (source_name is None or source_name == ""):
         source_name = input("Enter source name: ")
 
         if source_name.upper() == "ARCHTICS" and source_type == "KIP":
@@ -117,25 +127,26 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     # -----------------------------------------------------------------------
     # Repo root folder
     # -----------------------------------------------------------------------
-    select_repo_root_folder = ""
-    while select_repo_root_folder.upper() != "Y" and select_repo_root_folder.upper() != "N":
-        select_repo_root_folder = input("Create in repo folders for easy commit? [Y/N]: ")
+    if not ui_mode:
+        select_repo_root_folder = ""
+        while select_repo_root_folder.upper() != "Y" and select_repo_root_folder.upper() != "N":
+            select_repo_root_folder = input("Create in repo folders for easy commit? [Y/N]: ")
 
-    if select_repo_root_folder.upper() == "N":
-        repo_root_folder = ""
-    else:
-        while repo_root_folder is None:
-            print("Select folder containing cloned repositories from dialog. Dialog may be hidden behind other windows.")
-            print("Click Cancel to skip creating files in repo folder.")
-            repo_root_folder = folderDialog(title="Select folder containing cloned repos. Click Cancel to skip.")
+        if select_repo_root_folder.upper() == "N":
+            repo_root_folder = ""
+        else:
+            while repo_root_folder is None:
+                print("Select folder containing cloned repositories from dialog. Dialog may be hidden behind other windows.")
+                print("Click Cancel to skip creating files in repo folder.")
+                repo_root_folder = folderDialog(title="Select folder containing cloned repos. Click Cancel to skip.")
 
-            # if no repo folder selected, note it and move on
-            if repo_root_folder == "":
-                runlog.log("No repo folder selected. Not creating files in repo.")
+                # if no repo folder selected, note it and move on
+                if repo_root_folder == "":
+                    runlog.log("No repo folder selected. Not creating files in repo.")
 
-            # else normalize path
-            else:
-                repo_root_folder = normalizePath(repo_root_folder) + os.sep
+                # else normalize path
+                else:
+                    repo_root_folder = normalizePath(repo_root_folder) + os.sep
 
     # -----------------------------------------------------------------------
     # define db output folder for icp creation
@@ -166,6 +177,7 @@ def ingestconfigcreator_aud(srcType:str="", runProfileDict:dict={}):
     icplogmsg = CreateICP(profilename=profilename, sourcetype=source_type, client=client, database=database, sourcename=source_name, copyffoptions="", filedateregex="", outputfolder=outputfolder, fileimportmatch="", delimiter="", enclosedby="", pgpkey="")
 
     runlog.log(icplogmsg)
+    return {"outputfolder": outputfolder, "log": runlog.out()}
 
 if __name__ == "__main__":
     ingestconfigcreator_aud()

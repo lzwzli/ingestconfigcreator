@@ -20,20 +20,21 @@ from IngestConfigCreatorPrefect import ingestconfigcreator_prefect
 from IngestConfigCreatorAud import ingestconfigcreator_aud
 from version import version, releasedate
 
-SOURCE_TYPES = ["KIP", "FF", "AUD"]
+SOURCE_TYPES = ["KIP", "FF", "SDS", "AUD"]
 HELP_URL = "https://kraftanalyticsgroup.atlassian.net/wiki/x/vAC_6g"
 
 # display label -> the source type code the creator modules expect
-SOURCE_TYPE_LABELS = {"KIP": "API", "FF": "Flat File", "AUD": "RawAudience"}
+SOURCE_TYPE_LABELS = {"KIP": "API", "FF": "Flat File", "SDS": "DataShare", "AUD": "RawAudience"}
 SOURCE_TYPE_CODES = {label: code for code, label in SOURCE_TYPE_LABELS.items()}
 
 SOURCE_TYPE_HELP = {
-    "KIP": "Ingest resources for API / non flat file sources. Requires a data dictionary Excel file.",
-    "FF": "Ingest resources for Flat File sources. Requires a data dictionary Excel file.",
-    "AUD": "RawAudience config resources and test queries only. Requires a data dictionary Excel file.",
+    "KIP": "Create ingest resources for API sources.\nTable sheets must have .json file extension in FileMatchText field.",
+    "FF": "Create ingest resources for Flat File sources.\nTable sheets must have flat file (csv, txt) file extension in FileMatchText field.",
+    "SDS": "Create ingest resources for data share sources.\nTable sheets must have EXCLUDEFROMDATATRANSFERS in FileMatchText field.",
+    "AUD": "Create RawAudience config resources and test queries only.\nTable sheets must have RawAudienceIndicator = 1 and RawAudienceSheet referencing respective RawAudience sheets.",
 }
 
-DEFAULT_FILEDATE_REGEX = {"KIP": "[0-9]{14}", "FF": "[0-9]{8,12}"}
+DEFAULT_FILEDATE_REGEX = {"KIP": "[0-9]{14}", "FF": "[0-9]{8,12}", "SDS": "[0-9]{8,12}"}
 
 ICP_KEYS = [
     "sourcetype",
@@ -44,8 +45,7 @@ ICP_KEYS = [
     "filedateregex",
     "fileimportmatch",
     "delimiter",
-    "enclosedby",
-    "pgpkey",
+    "enclosedby"
 ]
 
 
@@ -175,7 +175,7 @@ class IngestConfigCreatorUI(ctk.CTk):
         ).grid(row=0, column=1, padx=8, pady=(16, 4), sticky="w")
 
         self._source_hint = ctk.CTkLabel(
-            form, text="", font=self._label_font, text_color=("gray40", "gray60"), anchor="w"
+            form, text="", font=self._label_font, text_color=("gray40", "gray60"), anchor="w", justify="left"
         )
         self._source_hint.grid(row=1, column=1, columnspan=2, padx=8, pady=(0, 8), sticky="w")
 
@@ -184,17 +184,16 @@ class IngestConfigCreatorUI(ctk.CTk):
         self._rows = {}
         row = 2
 
-        row = self._add_row(form, row, "ddfile", "Data dictionary file *", browse="file")
-        row = self._add_row(form, row, "client", "Client abbreviation *")
-        row = self._add_row(form, row, "database", "Database name *")
-        row = self._add_row(form, row, "sourcename", "Source name *")
-        row = self._add_row(form, row, "delimiter", "Column delimiter *")
-        row = self._add_row(form, row, "fileimportmatch", "File import match pattern *")
-        row = self._add_row(form, row, "copyffoptions", "Copy Into file format options")
+        row = self._add_row(form, row, "ddfile", "Data dictionary file *", placeholder="Select data dictionary Excel file", browse="file")
+        row = self._add_row(form, row, "client", "Client abbreviation *", placeholder="Enter client abbreviation, i.e.: KSG")
+        row = self._add_row(form, row, "database", "Database name *", placeholder="Enter database name, i.e.: KSGDEV")
+        row = self._add_row(form, row, "sourcename", "Source name *", placeholder="Enter source name, i.e.: Yinzcam")
+        row = self._add_row(form, row, "delimiter", "Column delimiter *", placeholder="Enter column delimiter, i.e.: |")
+        row = self._add_row(form, row, "fileimportmatch", "File import match pattern *", placeholder="Pattern that matches all files to import, i.e. *.csv")
+        row = self._add_row(form, row, "copyffoptions", "Copy Into file format options", placeholder="Enter any custom copy into file format options")
         row = self._add_row(form, row, "filedateregex", "File date regex")
-        row = self._add_row(form, row, "enclosedby", 'Enclosing character (default ")')
-        row = self._add_row(form, row, "pgpkey", "PGP key account")
-        row = self._add_row(form, row, "reporootfolder", "Repo root folder", browse="folder")
+        row = self._add_row(form, row, "enclosedby", 'Enclosing character', placeholder='Default value is double quotes (")')
+        row = self._add_row(form, row, "reporootfolder", "Repo root folder", placeholder="Select parent folder of all repos, i.e.: C:\\repos" , browse="folder")
 
         ctk.CTkLabel(
             form,
@@ -203,14 +202,16 @@ class IngestConfigCreatorUI(ctk.CTk):
             text_color=("gray40", "gray60"),
         ).grid(row=row, column=0, columnspan=3, padx=16, pady=(4, 16), sticky="w")
 
-    def _add_row(self, parent, row, key, label, browse=None):
+    def _add_row(self, parent, row, key, label, placeholder="", browse=None):
         widgets = []
+        if placeholder == "":
+            placeholder = label
 
         lbl = ctk.CTkLabel(parent, text=label, font=self._label_font, anchor="w")
         lbl.grid(row=row, column=0, padx=(16, 8), pady=5, sticky="w")
         widgets.append(lbl)
 
-        entry = ctk.CTkEntry(parent, placeholder_text=label)
+        entry = ctk.CTkEntry(parent, placeholder_text=placeholder)
         span = 1 if browse else 2
         entry.grid(row=row, column=1, columnspan=span, padx=8, pady=5, sticky="ew")
         widgets.append(entry)
@@ -264,7 +265,7 @@ class IngestConfigCreatorUI(ctk.CTk):
         self._source_hint.configure(text=SOURCE_TYPE_HELP.get(source_type, ""))
 
         prefect_only = ["copyffoptions", "filedateregex"]
-        ff_only = ["delimiter", "enclosedby", "fileimportmatch", "pgpkey"]
+        ff_only = ["delimiter", "copyffoptions", "filedateregex", "enclosedby", "fileimportmatch"]
 
         visible = set()
         if source_type in ("KIP", "FF"):
@@ -280,7 +281,7 @@ class IngestConfigCreatorUI(ctk.CTk):
                     widget.grid_remove()
 
         self._entries["filedateregex"].configure(
-            placeholder_text=f"default {DEFAULT_FILEDATE_REGEX.get(source_type, '')}"
+            placeholder_text=f"Default value is {DEFAULT_FILEDATE_REGEX.get(source_type, '')}"
         )
 
     def _browse_file(self, key):
@@ -333,7 +334,13 @@ class IngestConfigCreatorUI(ctk.CTk):
         self._append_log(f'::Loaded profile from "{path}"')
 
     def _collect_params(self):
-        return {key: entry.get().strip() for key, entry in self._entries.items()}
+        params = {key: entry.get().strip() for key, entry in self._entries.items()}
+        # set placeholder values for delimiter and fileimportmatch if its a datashare source to satisfy flat file processing path
+        if self._source_type == "SDS":
+            params["delimiter"] = ","
+            params["fileimportmatch"] = "*.csv"
+
+        return params
 
     def _validate(self, source_type, params):
         errors = []

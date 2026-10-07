@@ -120,14 +120,18 @@ def ingestconfigcreator_prefect(srcType:str="", runProfileDict:dict=None, ui_par
     # -----------------------------------------------------------------------
     # source type
     # -----------------------------------------------------------------------
-    source_type_list = ['FF', 'KIP']
+    source_type_list = ['FF', 'KIP', 'SDS']
     if not ui_mode and srcType == "" and source_type not in source_type_list:
         while source_type not in source_type_list:
             isFF = input("Is this a Flat File source? (Y/N) : ")
             if isFF.upper() == "Y":
                 source_type = "FF"
             elif isFF.upper() == "N":
-                source_type = "KIP"
+                isKIP = input("Is this an API (KIP) source? (Y/N) : ")
+                if isKIP.upper() == "Y":
+                    source_type = "KIP"
+                else:
+                    source_type = "SDS"
     elif srcType != "":
         source_type = srcType
 
@@ -243,7 +247,7 @@ def ingestconfigcreator_prefect(srcType:str="", runProfileDict:dict=None, ui_par
     # -----------------------------------------------------------------------
     # process Flat File source
     # -----------------------------------------------------------------------
-    if source_type == "FF":
+    if source_type == "FF" or source_type == "SDS":
         # -----------------------------------------------------------------------
         # create command with integrated arguments
         # -----------------------------------------------------------------------

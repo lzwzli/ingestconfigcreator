@@ -4,9 +4,10 @@ from importlib import import_module
 
 from Library.FunctionFiles.Functions import *
 class prefectclient:
-    def __init__(self, client:str, source_name:str, db_folder:str, repo_root_folder:str, runlog:object):
+    def __init__(self, client:str, source_name:str, source_type:str, db_folder:str, repo_root_folder:str, runlog:object):
         self.client = client
         self.source_name = source_name
+        self.source_type = source_type
         self.db_folder = db_folder
         self.repo_root_folder = repo_root_folder
 
@@ -83,9 +84,17 @@ class prefectclient:
         self.config_dict["workPoolName"] = "deployment_vars.work_pool_name"
         self.config_dict["workQueueName"] = "deployment_vars.work_queue_name"
         self.config_dict["sharedPackagePath"] = "deployment_vars.shared_packages_prefix"
-        self.config_dict["flowObject"] = f"{self.source_name.lower()}_ingest_flow"
-        self.config_dict["flowModuleName"] = f'"ingest_flow.py"'
-        self.config_dict["flowPackageName"] = f'"prefectshared-{self.source_name.lower()}"'
+
+        # use non acquire prefect package if its data share
+        if self.source_type == "SDS":
+            self.config_dict["flowObject"] = "load_and_transform_wrapper"
+            self.config_dict["flowModuleName"] = f'"non_acquire.py"'
+            self.config_dict["flowPackageName"] = f'"prefectshared-client"'
+            self.config_dict["flowRunParameters"] = '{"feature": "'+self.source_name.lower()+'"}'
+        else:
+            self.config_dict["flowObject"] = f"{self.source_name.lower()}_ingest_flow"
+            self.config_dict["flowModuleName"] = f'"ingest_flow.py"'
+            self.config_dict["flowPackageName"] = f'"prefectshared-{self.source_name.lower()}"'
 
         # load custom module definitions
         if self.has_fn_deploy_config_custom:

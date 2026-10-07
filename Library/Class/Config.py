@@ -892,6 +892,7 @@ class Config:
         wstable = wsheetinfo["wstable"]
         TableName = wsheetinfo["TableName"]
         ImportTableName = TableName
+        SourceTableName = wsheetinfo["SourceTableName"]
         col_list = wsheetinfo["col_list"]
         Threshold = wsheetinfo["Threshold"]
         StandardizationIndicator = wsheetinfo["StandardizationIndicator"]
@@ -917,19 +918,20 @@ class Config:
             ImportTableName = import_view_name
 
         # ----------------------------------------------------------------
-        # check extension
+        # check extension if source type is not SDS
         # ----------------------------------------------------------------
-        if self.source_type == "FF":
-            # EXIT PROCESSING if filematchtextfiletype is JSON
-            if "JSON" in FileMatchTextFileType:
-                self.runlog.log(f"FileMatchText file extension is JSON. Try KIP or SLAPI processing.")
-                raise Exception("FileMatchText file extension is JSON. Try KIP or SLAPI processing.")
-        else:
-            # EXIT PROCESSING if filematchtextfiletype is not JSON and the FileMatchText is not EXCLUDEFROMFILETRANSFERS.
-            # Tables with EXCLUDEFROMFILETRANSFERS is populated via flatten or bus rules
-            if "JSON" not in FileMatchTextFileType and FileMatchText.upper() != "EXCLUDEFROMFILETRANSFERS":
-                self.runlog.log(f"FileMatchText file extension is not JSON. Try flat file processing.")
-                raise Exception("FileMatchText file extension is not JSON. Try flat file processing.")
+        if self.source_type != "SDS":
+            if self.source_type == "FF":
+                # EXIT PROCESSING if filematchtextfiletype is JSON
+                if "JSON" in FileMatchTextFileType:
+                    self.runlog.log(f"FileMatchText file extension is JSON. Try KIP or SLAPI processing.")
+                    raise Exception("FileMatchText file extension is JSON. Try KIP or SLAPI processing.")
+            else:
+                # EXIT PROCESSING if filematchtextfiletype is not JSON and the FileMatchText is not EXCLUDEFROMFILETRANSFERS.
+                # Tables with EXCLUDEFROMFILETRANSFERS is populated via flatten or bus rules
+                if "JSON" not in FileMatchTextFileType and FileMatchText.upper() != "EXCLUDEFROMFILETRANSFERS":
+                    self.runlog.log(f"FileMatchText file extension is not JSON. Try flat file processing.")
+                    raise Exception("FileMatchText file extension is not JSON. Try flat file processing.")
 
         # ----------------------------------------------------------------
         # Add unique work table business rule if CreateKeyhash = 1
@@ -939,9 +941,9 @@ class Config:
             bus_rules.add_rule(WT_busrule)
 
         # ----------------------------------------------------------------
-        # Create Import DDL File
+        # Create Import DDL File if source type is not SDS
         # ----------------------------------------------------------------
-        if useImportView is False:
+        if useImportView is False and self.source_type != "SDS":
             if self.has_fn_create_import_DDL_custom:
                 self.runlog.log(f"Creating {self.source_name} custom Import table DDL.")
                 self.fn_create_import_DDL_custom(table_name=TableName.lower(), col_list=col_list, version=self.dts, db_folder=self.database_folder, runlog=self.runlog, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name, data_resources=self.data_resources)
@@ -964,9 +966,18 @@ class Config:
                 self.data_resources.append(["stage", f"{TableName.lower()}archive"])
 
         # ----------------------------------------------------------------
-        # Create truncate file
+        # Create Import View DDL File
         # ----------------------------------------------------------------
-        if useImportView:
+        if self.source_type == "SDS":
+            create_import_view_DDL(table_name=TableName.lower(), col_list=col_list, source_table_name=SourceTableName, source_date_indicator=SourceDateIndicator, pk_list=primary_keys_list, version=self.dts, db_folder=self.database_folder, runlog=self.runlog, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name)
+            self.data_resources.append(["import", "vw_"+TableName.lower()])
+
+        # ----------------------------------------------------------------
+        # Create truncate file if source type is not SDS
+        # ----------------------------------------------------------------
+        # skip creating truncate file if its an import view or if its a no acquire ingest.
+        # Expectation for no acquire ingest is that the import table is populated by either data share or some other process.
+        if self.source_type == "SDS" or (useImportView or FileMatchText.upper() == "EXCLUDEFROMFILETRANSFERS"):
             sources_obj.append("importSql", "NOTRUNCATE")
         else:
             if self.has_fn_create_truncate_query_custom:
@@ -993,7 +1004,12 @@ class Config:
             self.runlog.log(f"\nCreating {self.source_name} custom unique SP.")
             uniqueTableCreateSql = self.fn_create_unique_sp_custom(table_name=TableName, pk_list=primary_keys_list, col_list=col_list, db_folder=self.database_folder, runlog=self.runlog, std_ind=StandardizationIndicator, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name, import_view_name=import_view_name, create_keyhash=CreateKeyhash)
         else:
-            uniqueTableCreateSql = create_unique_sp(table_name=TableName, pk_list=primary_keys_list, col_list=col_list, db_folder=self.database_folder, runlog=self.runlog, std_ind=StandardizationIndicator, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name, import_view_name=import_view_name, create_keyhash=CreateKeyhash, pk_case_sensitive=pk_case_sensitive)
+            # if source type is SDS, provide sourcetablename
+            if self.source_type == "SDS":
+                uniqueTableCreateSql = create_unique_sp(table_name=TableName, pk_list=primary_keys_list, col_list=col_list, db_folder=self.database_folder, runlog=self.runlog, std_ind=StandardizationIndicator, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name, import_view_name=import_view_name, create_keyhash=CreateKeyhash, pk_case_sensitive=pk_case_sensitive, source_table_name=SourceTableName)
+            else:
+                uniqueTableCreateSql = create_unique_sp(table_name=TableName, pk_list=primary_keys_list, col_list=col_list, db_folder=self.database_folder, runlog=self.runlog, std_ind=StandardizationIndicator, repo_root_folder=self.repo_root_folder, client=self.client, source_name=self.source_name, import_view_name=import_view_name, create_keyhash=CreateKeyhash, pk_case_sensitive=pk_case_sensitive)
+
         sources_obj.append("uniqueTableCreateSql", f"CALL {uniqueTableCreateSql}")
         self.data_resources.append([uniqueTableCreateSql.split(".")[0], uniqueTableCreateSql.split(".")[1].replace("()","")])
 
@@ -1329,7 +1345,7 @@ class Config:
             # ----------------------------------------------------------------
             # Create Prefectclient Files
             # ----------------------------------------------------------------
-            pclient = prefectclient(client=self.client, source_name=self.source_name, db_folder=self.database_folder, repo_root_folder=self.repo_root_folder, runlog=self.runlog)
+            pclient = prefectclient(client=self.client, source_name=self.source_name, source_type=self.source_type, db_folder=self.database_folder, repo_root_folder=self.repo_root_folder, runlog=self.runlog)
             pclient.deploy_config()
             pclient.deploy_block_config()
             pclient.requirements()
@@ -1508,7 +1524,7 @@ class Config:
             #     copyinto_filename = None
             # else:
             # don't create copy into file if instructed to exclude from file transfers or SourceTableName is not empty
-            if FileMatchText.upper() != "EXCLUDEFROMFILETRANSFERS" and len(SourceTableName) < 1 and useImportView is False:
+            if self.source_type == "FF" and (FileMatchText.upper() != "EXCLUDEFROMFILETRANSFERS" and len(SourceTableName) < 1 and useImportView is False):
                 if self.has_fn_create_copyinto_custom:
                     self.runlog.log(f"Creating {self.source_name} custom copy into.")
                     try:
@@ -1525,6 +1541,36 @@ class Config:
             # Create Base Config
             # ----------------------------------------------------------------
             self.create_base_config(dd_file=self.dd_file, bus_rules=bus_rules, sources_obj=sources_obj, wsheetinfo=wsheetinfo, copyinto_filename=copyinto_filename)
+
+            # Parking this for now in case I need it for the future
+            # # ----------------------------------------------------------------
+            # # Create Flatten Insert File if FileMatchText is EXCLUDEFROMFILETRANSFERS
+            # # ----------------------------------------------------------------
+            # if wsheetinfo["FileMatchText"] == "EXCLUDEFROMFILETRANSFERS":
+            #     flatten_filename = ""
+            #     TableNameRaw = wsheetinfo["ObjectName"]
+            #     if self.need_flatten and useImportView is False:
+            #         try:
+            #             if self.has_fn_create_flatten_custom:
+            #                 self.runlog.log(f"Creating {self.source_name} custom flatten query.")
+            #                 flatten_filename = self.fn_create_flatten_custom(source_name=self.source_name, table_name=TableName.lower(), table_name_raw=TableNameRaw, col_list=col_list, version=self.dts, db_folder=self.database_folder, runlog=self.runlog, repo_root_folder=self.repo_root_folder, client=self.client, worksheet=wstable)
+            #             else:
+            #                 self.runlog.log("Creating basic flatfile flatten insert query.")
+            #                 flatten_filename = create_flatten_insert(source_name=self.source_name, table_name=TableName.lower(), table_name_raw=TableNameRaw, col_list=col_list, version=self.dts, db_folder=self.database_folder, runlog=self.runlog, repo_root_folder=self.repo_root_folder, client=self.client)
+            #         except Exception as e:
+            #             self.runlog.log(f"ERROR: Can't create Flatten Query\n{e}")
+            #             break
+            #
+            #         self.config_resources.append(["sources", flatten_filename])
+            #
+            #     # ----------------------------------------------------------------
+            #     # don't include flatten in import SQL if no flatten is created
+            #     # ----------------------------------------------------------------
+            #     if self.need_flatten and flatten_filename != "" and useImportView is False:
+            #         if copyinto_filename != "":
+            #             sources_obj.append("importSql", [{"sortOrder": 2, "sqlFileName": flatten_filename, "saveResults": False}])
+            #         else:
+            #             sources_obj.append("importSql", [{"sortOrder": 1, "sqlFileName": flatten_filename, "saveResults": False}])
 
         # ----------------------------------------------------------------
         # Create End Config
